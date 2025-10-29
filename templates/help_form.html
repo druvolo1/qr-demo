@@ -575,14 +575,33 @@
                 fileInput.onchange = async (e) => {
                     const file = e.target.files[0];
                     if (file) {
+                        // Show loading indicator
+                        const lookupBtn = document.querySelector('button[onclick="lookupProduct()"]');
+                        const originalText = lookupBtn.textContent;
+                        lookupBtn.textContent = 'Processing barcode...';
+                        lookupBtn.disabled = true;
+
                         try {
+                            console.log('Attempting to scan barcode from image...');
                             const html5QrcodeScanner = new Html5Qrcode("temp-scanner");
                             const result = await html5QrcodeScanner.scanFile(file, false);
+
+                            console.log('Barcode detected:', result);
                             document.getElementById('barcode').value = result;
-                            alert('Barcode scanned: ' + result);
+
+                            // Reset button
+                            lookupBtn.textContent = originalText;
+                            lookupBtn.disabled = false;
+
+                            // Auto-lookup the product
+                            await lookupProduct();
+
                         } catch (err) {
                             console.error('Barcode scan error:', err);
-                            alert('Unable to read barcode from image. Please try again or enter manually.');
+                            lookupBtn.textContent = originalText;
+                            lookupBtn.disabled = false;
+
+                            alert('Unable to read barcode from image. Make sure the barcode is clearly visible and well-lit. You can try again or enter the barcode manually.');
                         }
                     }
                 };
