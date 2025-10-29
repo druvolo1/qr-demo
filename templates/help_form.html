@@ -562,62 +562,6 @@
 
         // Barcode Scanner Functions
         function startScanner() {
-            // For iPhone/iOS - use native file input instead
-            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-
-            if (isIOS) {
-                // Create a temporary file input for iOS
-                const fileInput = document.createElement('input');
-                fileInput.type = 'file';
-                fileInput.accept = 'image/*';
-                fileInput.capture = 'environment';
-
-                fileInput.onchange = async (e) => {
-                    const file = e.target.files[0];
-                    if (file) {
-                        try {
-                            console.log('Processing image for barcode...');
-
-                            // Use Html5Qrcode with proper configuration for barcodes
-                            const html5QrcodeScanner = new Html5Qrcode("temp-scanner");
-
-                            // Try scanning with barcode support
-                            const config = {
-                                formatsToSupport: [
-                                    Html5QrcodeSupportedFormats.CODE_128,
-                                    Html5QrcodeSupportedFormats.CODE_39,
-                                    Html5QrcodeSupportedFormats.EAN_13,
-                                    Html5QrcodeSupportedFormats.EAN_8,
-                                    Html5QrcodeSupportedFormats.UPC_A,
-                                    Html5QrcodeSupportedFormats.UPC_E,
-                                    Html5QrcodeSupportedFormats.QR_CODE
-                                ]
-                            };
-
-                            const result = await html5QrcodeScanner.scanFileV2(file, config, false);
-
-                            console.log('Barcode found:', result.decodedText);
-                            document.getElementById('barcode').value = result.decodedText;
-
-                            // Show success and auto-lookup
-                            alert('Barcode scanned: ' + result.decodedText);
-
-                            // Automatically look up the product
-                            setTimeout(() => {
-                                lookupProduct();
-                            }, 500);
-
-                        } catch (err) {
-                            console.error('Barcode scan error:', err);
-                            alert('Unable to read barcode from image. Make sure the barcode is clear and well-lit. You can try again or enter manually.');
-                        }
-                    }
-                };
-
-                fileInput.click();
-                return;
-            }
-
             const scannerContainer = document.getElementById('scanner-container');
             scannerContainer.classList.add('active');
 
@@ -641,15 +585,21 @@
                 { facingMode: "environment" },
                 config,
                 (decodedText, decodedResult) => {
+                    // Successfully scanned
                     document.getElementById('barcode').value = decodedText;
                     stopScanner();
+
+                    // Automatically look up the product
+                    setTimeout(() => {
+                        lookupProduct();
+                    }, 500);
                 },
                 (errorMessage) => {
                     // Scanning errors can be ignored
                 }
             ).catch(err => {
                 console.error("Error starting scanner:", err);
-                alert("Unable to start camera. On iPhone, please take a photo of the barcode instead, or enter it manually.");
+                alert("Unable to start camera. Please check permissions.");
                 stopScanner();
             });
         }
