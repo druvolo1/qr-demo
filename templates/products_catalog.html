@@ -283,12 +283,32 @@
                     const file = e.target.files[0];
                     if (file) {
                         try {
+                            console.log('Processing image for barcode...');
+
+                            // Use Html5Qrcode with proper configuration for barcodes
                             const html5QrcodeScanner = new Html5Qrcode("temp-scanner");
-                            const result = await html5QrcodeScanner.scanFile(file, false);
-                            document.getElementById('barcode').value = result;
-                            alert('Barcode scanned: ' + result);
+
+                            // Try scanning with barcode support
+                            const config = {
+                                formatsToSupport: [
+                                    Html5QrcodeSupportedFormats.CODE_128,
+                                    Html5QrcodeSupportedFormats.CODE_39,
+                                    Html5QrcodeSupportedFormats.EAN_13,
+                                    Html5QrcodeSupportedFormats.EAN_8,
+                                    Html5QrcodeSupportedFormats.UPC_A,
+                                    Html5QrcodeSupportedFormats.UPC_E,
+                                    Html5QrcodeSupportedFormats.QR_CODE
+                                ]
+                            };
+
+                            const result = await html5QrcodeScanner.scanFileV2(file, config, false);
+
+                            console.log('Barcode found:', result.decodedText);
+                            document.getElementById('barcode').value = result.decodedText;
+                            alert('Barcode scanned: ' + result.decodedText);
                         } catch (err) {
-                            alert('Unable to read barcode from image. Please try again or enter manually.');
+                            console.error('Barcode scan error:', err);
+                            alert('Unable to read barcode from image. Make sure the barcode is clear and well-lit. You can try again or enter manually.');
                         }
                     }
                 };
