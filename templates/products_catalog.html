@@ -263,6 +263,40 @@
         let html5QrCode = null;
 
         function startScanner() {
+            // Check if running on HTTP (not HTTPS)
+            if (window.location.protocol === 'http:' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+                alert('Camera access requires HTTPS. Please use the native camera app or enter the barcode manually.');
+                return;
+            }
+
+            // For iPhone/iOS - use native file input instead
+            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+
+            if (isIOS) {
+                // Create a temporary file input for iOS
+                const fileInput = document.createElement('input');
+                fileInput.type = 'file';
+                fileInput.accept = 'image/*';
+                fileInput.capture = 'environment';
+
+                fileInput.onchange = async (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                        try {
+                            const html5QrcodeScanner = new Html5Qrcode("temp-scanner");
+                            const result = await html5QrcodeScanner.scanFile(file, false);
+                            document.getElementById('barcode').value = result;
+                            alert('Barcode scanned: ' + result);
+                        } catch (err) {
+                            alert('Unable to read barcode from image. Please try again or enter manually.');
+                        }
+                    }
+                };
+
+                fileInput.click();
+                return;
+            }
+
             const scannerContainer = document.getElementById('scanner-container');
             scannerContainer.classList.add('active');
 
@@ -295,7 +329,7 @@
                 }
             ).catch(err => {
                 console.error("Error starting scanner:", err);
-                alert("Unable to start camera. Please check permissions.");
+                alert("Unable to start camera. On iPhone, please take a photo of the barcode instead, or enter it manually.");
                 stopScanner();
             });
         }
@@ -326,5 +360,8 @@
         <div id="scanner"></div>
         <button class="scanner-close" onclick="stopScanner()">Cancel</button>
     </div>
+
+    <!-- Hidden temp scanner for iOS file scanning -->
+    <div id="temp-scanner" style="display: none;"></div>
 </body>
 </html>

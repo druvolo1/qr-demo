@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Product Help Request</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <style>
         body {
             background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
@@ -243,6 +244,65 @@
             color: #666;
             font-size: 16px;
         }
+
+        .scanner-container {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 9999;
+            padding: 20px;
+        }
+
+        .scanner-container.active {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .scanner-header {
+            color: white;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        #scanner {
+            max-width: 600px;
+            width: 100%;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .scanner-close {
+            margin-top: 20px;
+            padding: 12px 30px;
+            background: #f44336;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        .scan-btn {
+            width: 100%;
+            padding: 12px;
+            background: #4caf50;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 10px;
+        }
+
+        .scan-btn:hover {
+            background: #45a049;
+        }
     </style>
 </head>
 <body>
@@ -270,6 +330,7 @@
                     <div class="form-group">
                         <label for="barcode">Product Barcode:</label>
                         <input type="text" id="barcode" placeholder="Scan or enter barcode">
+                        <button type="button" onclick="startScanner()" class="scan-btn">📷 Scan Barcode</button>
                         <button type="button" onclick="lookupProduct()" class="btn btn-secondary" style="margin-top: 10px; width: 100%;">Look Up Product</button>
                     </div>
                 </div>
@@ -312,8 +373,58 @@
     </div>
 
     <script>
+        // Log device information to console
+        console.log('=== DEVICE INFORMATION ===');
+        console.log('User Agent:', navigator.userAgent);
+        console.log('Platform:', navigator.platform);
+        console.log('Language:', navigator.language);
+        console.log('Screen Resolution:', window.screen.width + 'x' + window.screen.height);
+        console.log('Viewport Size:', window.innerWidth + 'x' + window.innerHeight);
+        console.log('Device Pixel Ratio:', window.devicePixelRatio);
+        console.log('Touch Support:', 'ontouchstart' in window);
+        console.log('Connection Type:', navigator.connection ? navigator.connection.effectiveType : 'Unknown');
+        console.log('Online Status:', navigator.onLine);
+        console.log('Cookies Enabled:', navigator.cookieEnabled);
+        console.log('Do Not Track:', navigator.doNotTrack);
+        console.log('Timezone:', Intl.DateTimeFormat().resolvedOptions().timeZone);
+        console.log('Current Time:', new Date().toISOString());
+        console.log('Referrer:', document.referrer || 'Direct');
+        console.log('Page URL:', window.location.href);
+
+        // Try to get more detailed device info
+        if (navigator.userAgentData) {
+            navigator.userAgentData.getHighEntropyValues([
+                "architecture",
+                "model",
+                "platform",
+                "platformVersion",
+                "fullVersionList"
+            ]).then(ua => {
+                console.log('High Entropy User Agent Data:', ua);
+            });
+        }
+
+        // Log geolocation if available (requires permission)
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    console.log('Geolocation:', {
+                        latitude: position.coords.latitude,
+                        longitude: position.coords.longitude,
+                        accuracy: position.coords.accuracy
+                    });
+                },
+                (error) => {
+                    console.log('Geolocation Error:', error.message);
+                }
+            );
+        }
+
+        console.log('========================');
+
         let selectedChoice = null;
         let productFound = false;
+        let html5QrCode = null;
 
         function selectChoice(choice) {
             selectedChoice = choice;
@@ -448,6 +559,99 @@
                 document.getElementById('success-message').classList.add('show');
             }
         });
+
+        // Barcode Scanner Functions
+        function startScanner() {
+            // For iPhone/iOS - use native file input instead
+            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+
+            if (isIOS) {
+                // Create a temporary file input for iOS
+                const fileInput = document.createElement('input');
+                fileInput.type = 'file';
+                fileInput.accept = 'image/*';
+                fileInput.capture = 'environment';
+
+                fileInput.onchange = async (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                        try {
+                            const html5QrcodeScanner = new Html5Qrcode("temp-scanner");
+                            const result = await html5QrcodeScanner.scanFile(file, false);
+                            document.getElementById('barcode').value = result;
+                            alert('Barcode scanned: ' + result);
+                        } catch (err) {
+                            console.error('Barcode scan error:', err);
+                            alert('Unable to read barcode from image. Please try again or enter manually.');
+                        }
+                    }
+                };
+
+                fileInput.click();
+                return;
+            }
+
+            const scannerContainer = document.getElementById('scanner-container');
+            scannerContainer.classList.add('active');
+
+            html5QrCode = new Html5Qrcode("scanner");
+
+            const config = {
+                fps: 10,
+                qrbox: { width: 250, height: 250 },
+                formatsToSupport: [
+                    Html5QrcodeSupportedFormats.CODE_128,
+                    Html5QrcodeSupportedFormats.CODE_39,
+                    Html5QrcodeSupportedFormats.EAN_13,
+                    Html5QrcodeSupportedFormats.EAN_8,
+                    Html5QrcodeSupportedFormats.UPC_A,
+                    Html5QrcodeSupportedFormats.UPC_E,
+                    Html5QrcodeSupportedFormats.QR_CODE
+                ]
+            };
+
+            html5QrCode.start(
+                { facingMode: "environment" },
+                config,
+                (decodedText, decodedResult) => {
+                    document.getElementById('barcode').value = decodedText;
+                    stopScanner();
+                },
+                (errorMessage) => {
+                    // Scanning errors can be ignored
+                }
+            ).catch(err => {
+                console.error("Error starting scanner:", err);
+                alert("Unable to start camera. On iPhone, please take a photo of the barcode instead, or enter it manually.");
+                stopScanner();
+            });
+        }
+
+        function stopScanner() {
+            if (html5QrCode) {
+                html5QrCode.stop().then(() => {
+                    document.getElementById('scanner-container').classList.remove('active');
+                    html5QrCode = null;
+                }).catch(err => {
+                    console.error("Error stopping scanner:", err);
+                });
+            } else {
+                document.getElementById('scanner-container').classList.remove('active');
+            }
+        }
     </script>
+
+    <!-- Barcode Scanner Overlay -->
+    <div id="scanner-container" class="scanner-container">
+        <div class="scanner-header">
+            <h2>Scan Product Barcode</h2>
+            <p>Position the barcode within the frame</p>
+        </div>
+        <div id="scanner"></div>
+        <button class="scanner-close" onclick="stopScanner()">Cancel</button>
+    </div>
+
+    <!-- Hidden temp scanner for iOS file scanning -->
+    <div id="temp-scanner" style="display: none;"></div>
 </body>
 </html>
