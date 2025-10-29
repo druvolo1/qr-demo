@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Product Help Request</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        body {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .form-container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+        }
+
+        .form-container h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .form-container .message {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 16px;
+            line-height: 1.5;
+        }
+
+        .choice-section {
+            margin-bottom: 30px;
+        }
+
+        .choice-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .choice-btn {
+            padding: 20px;
+            border: 3px solid #e0e0e0;
+            border-radius: 10px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .choice-btn:hover {
+            border-color: #f093fb;
+            background: #fef9ff;
+        }
+
+        .choice-btn.selected {
+            border-color: #f093fb;
+            background: #f093fb;
+            color: white;
+        }
+
+        .choice-btn .icon {
+            font-size: 36px;
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        #barcode-section, #name-section, #product-info {
+            display: none;
+            animation: fadeIn 0.3s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .product-info-box {
+            background: #f0f9ff;
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid #3b82f6;
+            margin: 20px 0;
+        }
+
+        .product-info-box h3 {
+            color: #1e40af;
+            margin-bottom: 15px;
+        }
+
+        .product-detail {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .product-detail strong {
+            color: #374151;
+        }
+
+        .product-detail span {
+            color: #111827;
+            font-weight: 600;
+        }
+
+        .inventory-status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .inventory-status.in-stock {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .inventory-status.low-stock {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .inventory-status.out-of-stock {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .form-group input[type="text"],
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            background: white;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input[type="text"]:focus {
+            outline: none;
+            border-color: #f093fb;
+        }
+
+        .file-upload {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+            width: 100%;
+        }
+
+        .file-upload input[type="file"] {
+            position: absolute;
+            left: -9999px;
+        }
+
+        .file-upload-label {
+            display: block;
+            padding: 12px;
+            border: 2px dashed #e0e0e0;
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #f9f9f9;
+        }
+
+        .file-upload-label:hover {
+            border-color: #f093fb;
+            background: #fff5fe;
+        }
+
+        .file-upload-label.has-file {
+            border-color: #4caf50;
+            background: #f0fff0;
+        }
+
+        .file-preview {
+            margin-top: 10px;
+            text-align: center;
+        }
+
+        .file-preview img {
+            max-width: 200px;
+            max-height: 200px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(240, 147, 251, 0.4);
+        }
+
+        .success-message {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .success-message.show {
+            display: block;
+        }
+
+        .success-icon {
+            font-size: 64px;
+            color: #4caf50;
+            margin-bottom: 20px;
+        }
+
+        .success-message h2 {
+            color: #4caf50;
+            margin-bottom: 10px;
+        }
+
+        .success-message p {
+            color: #666;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="form-container">
+        <div id="form-content">
+            <h1>How Can We Help?</h1>
+            <p class="message">Choose an option below to get started</p>
+
+            <form id="help-form" enctype="multipart/form-data">
+                <div class="choice-section">
+                    <h3>I want to:</h3>
+                    <div class="choice-buttons">
+                        <div class="choice-btn" onclick="selectChoice('product')">
+                            <span class="icon">📦</span>
+                            Scan Product Barcode
+                        </div>
+                        <div class="choice-btn" onclick="selectChoice('associate')">
+                            <span class="icon">👤</span>
+                            Request Associate
+                        </div>
+                    </div>
+                </div>
+
+                <div id="barcode-section">
+                    <div class="form-group">
+                        <label for="barcode">Product Barcode:</label>
+                        <input type="text" id="barcode" placeholder="Scan or enter barcode">
+                        <button type="button" onclick="lookupProduct()" class="btn btn-secondary" style="margin-top: 10px; width: 100%;">Look Up Product</button>
+                    </div>
+                </div>
+
+                <div id="product-info"></div>
+
+                <div id="name-section">
+                    <div class="form-group">
+                        <label for="name">Your Name:</label>
+                        <input type="text" id="name" placeholder="Enter your name" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="selfie">Upload Selfie (Optional):</label>
+                        <div class="file-upload">
+                            <input type="file" id="selfie" accept="image/*" capture="user" onchange="previewImage(event)">
+                            <label for="selfie" class="file-upload-label" id="file-label">
+                                📸 Tap to take/upload selfie
+                            </label>
+                        </div>
+                        <div class="file-preview" id="file-preview"></div>
+                    </div>
+
+                    <button type="submit" class="submit-btn" id="submit-btn" style="display: none;">Request Help</button>
+                </div>
+            </form>
+        </div>
+
+        <div id="success-message" class="success-message">
+            <div class="success-icon">✓</div>
+            <h2>Request Submitted!</h2>
+            <p>An associate will be with you shortly.</p>
+        </div>
+    </div>
+
+    <div style="text-align: center; margin-top: 20px; padding: 20px;">
+        <a href="/" style="color: rgba(255, 255, 255, 0.6); text-decoration: none; font-size: 12px;">Admin Portal</a>
+        <span style="color: rgba(255, 255, 255, 0.4); margin: 0 10px;">|</span>
+        <a href="/help-dashboard" style="color: rgba(255, 255, 255, 0.6); text-decoration: none; font-size: 12px;">Dashboard</a>
+    </div>
+
+    <script>
+        let selectedChoice = null;
+        let productFound = false;
+
+        function selectChoice(choice) {
+            selectedChoice = choice;
+
+            // Update button states
+            document.querySelectorAll('.choice-btn').forEach(btn => {
+                btn.classList.remove('selected');
+            });
+            event.currentTarget.classList.add('selected');
+
+            // Show/hide sections
+            if (choice === 'product') {
+                document.getElementById('barcode-section').style.display = 'block';
+                document.getElementById('name-section').style.display = 'none';
+                document.getElementById('submit-btn').style.display = 'none';
+            } else {
+                document.getElementById('barcode-section').style.display = 'none';
+                document.getElementById('product-info').style.display = 'none';
+                document.getElementById('name-section').style.display = 'block';
+                document.getElementById('submit-btn').style.display = 'block';
+            }
+        }
+
+        async function lookupProduct() {
+            const barcode = document.getElementById('barcode').value.trim();
+            if (!barcode) {
+                alert('Please enter a barcode');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/catalog/barcode/${barcode}`);
+                if (response.ok) {
+                    const product = await response.json();
+                    displayProductInfo(product);
+                    productFound = true;
+                } else {
+                    document.getElementById('product-info').innerHTML = '<p style="color: #dc2626; text-align: center;">Product not found. Please check the barcode or request an associate.</p>';
+                    document.getElementById('product-info').style.display = 'block';
+                    document.getElementById('name-section').style.display = 'block';
+                    document.getElementById('submit-btn').style.display = 'block';
+                    productFound = false;
+                }
+            } catch (error) {
+                alert('Error looking up product');
+            }
+        }
+
+        function displayProductInfo(product) {
+            let inventoryClass = 'in-stock';
+            let inventoryText = 'In Stock';
+
+            if (product.inventory === 0) {
+                inventoryClass = 'out-of-stock';
+                inventoryText = 'Out of Stock';
+            } else if (product.inventory < 5) {
+                inventoryClass = 'low-stock';
+                inventoryText = `Low Stock (${product.inventory})`;
+            } else {
+                inventoryText = `${product.inventory} Available`;
+            }
+
+            const html = `
+                <div class="product-info-box">
+                    <h3>Product Information</h3>
+                    <div class="product-detail">
+                        <strong>Brand:</strong>
+                        <span>${product.brand}</span>
+                    </div>
+                    <div class="product-detail">
+                        <strong>Description:</strong>
+                        <span>${product.description}</span>
+                    </div>
+                    <div class="product-detail">
+                        <strong>Price:</strong>
+                        <span>$${parseFloat(product.price).toFixed(2)}</span>
+                    </div>
+                    <div class="product-detail">
+                        <strong>Availability:</strong>
+                        <span class="inventory-status ${inventoryClass}">${inventoryText}</span>
+                    </div>
+                    <p style="margin-top: 15px; text-align: center; color: #666;">Need help with this product?</p>
+                </div>
+            `;
+
+            document.getElementById('product-info').innerHTML = html;
+            document.getElementById('product-info').style.display = 'block';
+            document.getElementById('name-section').style.display = 'block';
+            document.getElementById('submit-btn').style.display = 'block';
+        }
+
+        function previewImage(event) {
+            const file = event.target.files[0];
+            const preview = document.getElementById('file-preview');
+            const label = document.getElementById('file-label');
+
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    preview.innerHTML = `<img src="${e.target.result}" alt="Preview">`;
+                    label.textContent = `✓ ${file.name}`;
+                    label.classList.add('has-file');
+                }
+                reader.readAsDataURL(file);
+            } else {
+                preview.innerHTML = '';
+                label.textContent = '📸 Tap to take/upload selfie';
+                label.classList.remove('has-file');
+            }
+        }
+
+        document.getElementById('help-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const formData = new FormData();
+            formData.append('request_type', selectedChoice);
+            formData.append('name', document.getElementById('name').value);
+            formData.append('barcode', document.getElementById('barcode').value || '');
+
+            const selfieInput = document.getElementById('selfie');
+            if (selfieInput.files.length > 0) {
+                formData.append('selfie', selfieInput.files[0]);
+            }
+
+            const response = await fetch('/api/help-requests', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (response.ok) {
+                document.getElementById('form-content').style.display = 'none';
+                document.getElementById('success-message').classList.add('show');
+            }
+        });
+    </script>
+</body>
+</html>

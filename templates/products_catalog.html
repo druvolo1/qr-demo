@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Product Catalog Management</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Product Catalog Management</h1>
+            <nav>
+                <a href="/" class="btn btn-secondary">Shoe Portal</a>
+                <a href="/catalog" class="btn">Product Catalog</a>
+                <a href="/help-qr" class="btn btn-secondary">Help QR</a>
+                <a href="/dashboard" class="btn btn-secondary">Shoe Dashboard</a>
+                <a href="/help-dashboard" class="btn btn-secondary">Help Dashboard</a>
+            </nav>
+        </header>
+
+        <section class="add-product">
+            <h2 id="form-title">Add Product to Catalog</h2>
+            <form id="product-form">
+                <input type="hidden" id="product-id">
+
+                <div class="form-group">
+                    <label for="barcode">Barcode/SKU:</label>
+                    <input type="text" id="barcode" required placeholder="e.g., 123456789">
+                </div>
+
+                <div class="form-group">
+                    <label for="brand">Brand:</label>
+                    <input type="text" id="brand" required placeholder="e.g., Nike">
+                </div>
+
+                <div class="form-group">
+                    <label for="description">Description:</label>
+                    <textarea id="description" rows="3" required placeholder="e.g., Air Max 90 Running Shoes"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="price">Price ($):</label>
+                    <input type="number" id="price" step="0.01" required placeholder="e.g., 129.99">
+                </div>
+
+                <div class="form-group">
+                    <label for="inventory">Inventory Available:</label>
+                    <input type="number" id="inventory" min="0" required placeholder="e.g., 25">
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary" id="submit-btn">Add Product</button>
+                    <button type="button" class="btn btn-secondary" id="cancel-btn" onclick="cancelEdit()" style="display: none;">Cancel</button>
+                </div>
+            </form>
+        </section>
+
+        <section class="products-list">
+            <h2>Catalog Products</h2>
+            <div id="products-container"></div>
+        </section>
+    </div>
+
+    <script>
+        let editingProductId = null;
+
+        // Load all products
+        async function loadProducts() {
+            const response = await fetch('/api/catalog');
+            const products = await response.json();
+            displayProducts(products);
+        }
+
+        // Display products in the list
+        function displayProducts(products) {
+            const container = document.getElementById('products-container');
+
+            if (products.length === 0) {
+                container.innerHTML = '<p class="no-products">No products yet. Add your first product above.</p>';
+                return;
+            }
+
+            container.innerHTML = products.map(product => `
+                <div class="product-card">
+                    <div class="product-header">
+                        <h3>${product.brand} - ${product.description}</h3>
+                        <div class="product-actions">
+                            <button onclick="editProduct('${product.id}')" class="btn btn-small btn-secondary">Edit</button>
+                            <button onclick="deleteProduct('${product.id}')" class="btn btn-small btn-danger">Delete</button>
+                        </div>
+                    </div>
+                    <div class="product-details">
+                        <p><strong>Barcode:</strong> <code>${product.barcode}</code></p>
+                        <p><strong>Price:</strong> $${parseFloat(product.price).toFixed(2)}</p>
+                        <p><strong>Inventory:</strong> ${product.inventory} units</p>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Add or update product
+        document.getElementById('product-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const productData = {
+                barcode: document.getElementById('barcode').value,
+                brand: document.getElementById('brand').value,
+                description: document.getElementById('description').value,
+                price: parseFloat(document.getElementById('price').value),
+                inventory: parseInt(document.getElementById('inventory').value)
+            };
+
+            let response;
+            if (editingProductId) {
+                response = await fetch(`/api/catalog/${editingProductId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(productData)
+                });
+            } else {
+                response = await fetch('/api/catalog', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(productData)
+                });
+            }
+
+            if (response.ok) {
+                document.getElementById('product-form').reset();
+                cancelEdit();
+                loadProducts();
+            }
+        });
+
+        // Edit product
+        async function editProduct(productId) {
+            const response = await fetch('/api/catalog');
+            const products = await response.json();
+            const product = products.find(p => p.id === productId);
+
+            if (product) {
+                editingProductId = productId;
+                document.getElementById('form-title').textContent = 'Edit Product';
+                document.getElementById('submit-btn').textContent = 'Update Product';
+                document.getElementById('cancel-btn').style.display = 'inline-block';
+
+                document.getElementById('barcode').value = product.barcode;
+                document.getElementById('brand').value = product.brand;
+                document.getElementById('description').value = product.description;
+                document.getElementById('price').value = product.price;
+                document.getElementById('inventory').value = product.inventory;
+
+                document.getElementById('product-form').scrollIntoView({ behavior: 'smooth' });
+            }
+        }
+
+        // Cancel edit
+        function cancelEdit() {
+            editingProductId = null;
+            document.getElementById('form-title').textContent = 'Add Product to Catalog';
+            document.getElementById('submit-btn').textContent = 'Add Product';
+            document.getElementById('cancel-btn').style.display = 'none';
+            document.getElementById('product-form').reset();
+        }
+
+        // Delete product
+        async function deleteProduct(productId) {
+            if (confirm('Are you sure you want to delete this product?')) {
+                await fetch(`/api/catalog/${productId}`, { method: 'DELETE' });
+                loadProducts();
+            }
+        }
+
+        // Load products on page load
+        loadProducts();
+    </script>
+</body>
+</html>

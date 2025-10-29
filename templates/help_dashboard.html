@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Requests Dashboard</title>
+    <title>Help Requests Dashboard</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
     <style>
@@ -43,17 +43,13 @@
         }
 
         @keyframes pulse {
-            0%, 100% {
-                opacity: 1;
-            }
-            50% {
-                opacity: 0.5;
-            }
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
         }
 
         .requests-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
             gap: 20px;
         }
 
@@ -72,7 +68,17 @@
             box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
         }
 
-        .request-card::before {
+        .request-card.product-help::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .request-card.associate-request::before {
             content: '';
             position: absolute;
             top: 0;
@@ -89,11 +95,23 @@
             margin-bottom: 15px;
         }
 
-        .request-product {
-            font-size: 18px;
+        .request-type {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
             font-weight: 600;
-            color: #333;
-            margin-bottom: 5px;
+            margin-bottom: 8px;
+        }
+
+        .request-type.product {
+            background: #fce7f3;
+            color: #be185d;
+        }
+
+        .request-type.associate {
+            background: #ddd6fe;
+            color: #5b21b6;
         }
 
         .request-time {
@@ -116,25 +134,55 @@
             background: #d32f2f;
         }
 
-        .request-details {
-            margin-top: 15px;
+        .customer-name {
+            font-size: 18px;
+            font-weight: 600;
+            color: #f5576c;
+            margin-bottom: 10px;
         }
 
-        .detail-row {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 8px;
+        .product-info-box {
+            background: #f0f9ff;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            border-left: 4px solid #3b82f6;
+        }
+
+        .product-info-box h4 {
+            color: #1e40af;
+            margin-bottom: 10px;
             font-size: 14px;
         }
 
-        .detail-label {
-            color: #666;
-            font-weight: 500;
+        .product-detail {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+            font-size: 13px;
         }
 
-        .detail-value {
-            color: #333;
+        .product-detail strong {
+            color: #374151;
+        }
+
+        .product-detail span {
+            color: #111827;
             font-weight: 600;
+        }
+
+        .selfie-container {
+            margin-top: 15px;
+            text-align: center;
+        }
+
+        .selfie-img {
+            width: 120px;
+            height: 120px;
+            border-radius: 10px;
+            object-fit: cover;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+            border: 3px solid #f0f0f0;
         }
 
         .time-remaining {
@@ -155,27 +203,6 @@
         .time-remaining.critical {
             background: #f8d7da;
             color: #721c24;
-        }
-
-        .selfie-container {
-            margin-top: 15px;
-            text-align: center;
-        }
-
-        .selfie-img {
-            width: 120px;
-            height: 120px;
-            border-radius: 10px;
-            object-fit: cover;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-            border: 3px solid #f0f0f0;
-        }
-
-        .customer-name {
-            font-size: 16px;
-            font-weight: 600;
-            color: #667eea;
-            margin-bottom: 10px;
         }
 
         .no-requests {
@@ -201,7 +228,7 @@
     <div class="container dashboard-container">
         <header class="dashboard-header">
             <div>
-                <h1>Shoe Try-On Dashboard</h1>
+                <h1>Help Requests Dashboard</h1>
                 <div class="status-indicator">
                     <div class="status-dot" id="status-dot"></div>
                     <span id="status-text">Connected</span>
@@ -211,15 +238,15 @@
                 <a href="/" class="btn btn-secondary">Shoe Portal</a>
                 <a href="/catalog" class="btn btn-secondary">Product Catalog</a>
                 <a href="/help-qr" class="btn btn-secondary">Help QR</a>
-                <a href="/dashboard" class="btn">Shoe Dashboard</a>
-                <a href="/help-dashboard" class="btn btn-secondary">Help Dashboard</a>
+                <a href="/dashboard" class="btn btn-secondary">Shoe Dashboard</a>
+                <a href="/help-dashboard" class="btn">Help Dashboard</a>
             </nav>
         </header>
 
         <div id="requests-container">
             <div class="no-requests">
-                <h3>No Active Requests</h3>
-                <p>Waiting for new requests...</p>
+                <h3>No Active Help Requests</h3>
+                <p>Waiting for customer requests...</p>
             </div>
         </div>
     </div>
@@ -229,7 +256,6 @@
         let requests = [];
         let timeUpdateInterval;
 
-        // Socket connection handlers
         socket.on('connect', () => {
             console.log('Connected to server');
             document.getElementById('status-dot').classList.remove('disconnected');
@@ -242,21 +268,19 @@
             document.getElementById('status-text').textContent = 'Disconnected';
         });
 
-        // Listen for request updates
-        socket.on('requests_updated', (data) => {
+        socket.on('help_requests_updated', (data) => {
             requests = data.requests;
             displayRequests();
         });
 
-        // Display requests
         function displayRequests() {
             const container = document.getElementById('requests-container');
 
             if (requests.length === 0) {
                 container.innerHTML = `
                     <div class="no-requests">
-                        <h3>No Active Requests</h3>
-                        <p>Waiting for new requests...</p>
+                        <h3>No Active Help Requests</h3>
+                        <p>Waiting for customer requests...</p>
                     </div>
                 `;
                 return;
@@ -269,11 +293,36 @@
             `;
         }
 
-        // Create request card HTML
         function createRequestCard(request) {
             const createdAt = new Date(request.created_at);
             const timeAgo = getTimeAgo(createdAt);
             const timeRemaining = getTimeRemaining(createdAt, request.timeout_minutes);
+
+            const requestTypeClass = request.request_type === 'product' ? 'product' : 'associate';
+            const requestTypeText = request.request_type === 'product' ? '📦 Product Help' : '👤 Associate Request';
+            const cardClass = request.request_type === 'product' ? 'product-help' : 'associate-request';
+
+            const productInfoHtml = request.product_info ? `
+                <div class="product-info-box">
+                    <h4>Product Details</h4>
+                    <div class="product-detail">
+                        <strong>Brand:</strong>
+                        <span>${request.product_info.brand}</span>
+                    </div>
+                    <div class="product-detail">
+                        <strong>Description:</strong>
+                        <span>${request.product_info.description}</span>
+                    </div>
+                    <div class="product-detail">
+                        <strong>Price:</strong>
+                        <span>$${parseFloat(request.product_info.price).toFixed(2)}</span>
+                    </div>
+                    <div class="product-detail">
+                        <strong>Available:</strong>
+                        <span>${request.product_info.inventory} units</span>
+                    </div>
+                </div>
+            ` : '';
 
             const selfieHtml = request.selfie
                 ? `<div class="selfie-container">
@@ -282,25 +331,17 @@
                 : '';
 
             return `
-                <div class="request-card">
+                <div class="request-card ${cardClass}">
                     <div class="request-header">
                         <div>
-                            <div class="request-product">${request.product_name}</div>
+                            <span class="request-type ${requestTypeClass}">${requestTypeText}</span>
                             <div class="request-time">${timeAgo}</div>
                         </div>
                         <button class="delete-btn" onclick="deleteRequest('${request.id}')">Remove</button>
                     </div>
-                    ${request.name ? `<div class="customer-name">${request.name}</div>` : ''}
-                    <div class="request-details">
-                        <div class="detail-row">
-                            <span class="detail-label">Size:</span>
-                            <span class="detail-value">${request.size}</span>
-                        </div>
-                        <div class="detail-row">
-                            <span class="detail-label">Request ID:</span>
-                            <span class="detail-value">#${request.id.slice(-6)}</span>
-                        </div>
-                    </div>
+                    <div class="customer-name">${request.name}</div>
+                    ${request.barcode ? `<p style="color: #666; font-size: 14px; margin-bottom: 10px;"><strong>Barcode:</strong> ${request.barcode}</p>` : ''}
+                    ${productInfoHtml}
                     ${selfieHtml}
                     <div class="time-remaining ${timeRemaining.class}" id="time-${request.id}">
                         ${timeRemaining.text}
@@ -309,7 +350,6 @@
             `;
         }
 
-        // Get time ago string
         function getTimeAgo(date) {
             const seconds = Math.floor((new Date() - date) / 1000);
 
@@ -322,7 +362,6 @@
             return `${days} day${days !== 1 ? 's' : ''} ago`;
         }
 
-        // Get time remaining
         function getTimeRemaining(createdAt, timeoutMinutes) {
             const expiryTime = new Date(createdAt.getTime() + timeoutMinutes * 60000);
             const now = new Date();
@@ -349,7 +388,6 @@
             return { text, class: className };
         }
 
-        // Update time remaining for all requests
         function updateTimeRemaining() {
             requests.forEach(request => {
                 const element = document.getElementById(`time-${request.id}`);
@@ -362,24 +400,19 @@
             });
         }
 
-        // Delete request
         async function deleteRequest(requestId) {
             if (confirm('Are you sure you want to remove this request?')) {
-                await fetch(`/api/requests/${requestId}`, { method: 'DELETE' });
+                await fetch(`/api/help-requests/${requestId}`, { method: 'DELETE' });
             }
         }
 
-        // Load initial requests
         async function loadRequests() {
-            const response = await fetch('/api/requests');
+            const response = await fetch('/api/help-requests');
             requests = await response.json();
             displayRequests();
         }
 
-        // Update time remaining every second
         timeUpdateInterval = setInterval(updateTimeRemaining, 1000);
-
-        // Load requests on page load
         loadRequests();
     </script>
 </body>

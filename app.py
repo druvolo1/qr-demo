@@ -20,8 +20,10 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 
 # File paths for flat file storage
-PRODUCTS_FILE = 'data/products.json'
-REQUESTS_FILE = 'data/requests.json'
+PRODUCTS_FILE = 'data/products.json'  # Shoe try-on products
+REQUESTS_FILE = 'data/requests.json'  # Shoe try-on requests
+CATALOG_FILE = 'data/catalog.json'    # Product catalog for help system
+HELP_REQUESTS_FILE = 'data/help_requests.json'  # Help/associate requests
 
 # Initialize data files and folders if they don't exist
 def init_data_files():
@@ -34,6 +36,12 @@ def init_data_files():
             json.dump([], f)
     if not os.path.exists(REQUESTS_FILE):
         with open(REQUESTS_FILE, 'w') as f:
+            json.dump([], f)
+    if not os.path.exists(CATALOG_FILE):
+        with open(CATALOG_FILE, 'w') as f:
+            json.dump([], f)
+    if not os.path.exists(HELP_REQUESTS_FILE):
+        with open(HELP_REQUESTS_FILE, 'w') as f:
             json.dump([], f)
 
 init_data_files()
@@ -95,14 +103,30 @@ def save_requests(requests):
     with open(REQUESTS_FILE, 'w') as f:
         json.dump(requests, f, indent=2)
 
+def load_catalog():
+    with open(CATALOG_FILE, 'r') as f:
+        return json.load(f)
+
+def save_catalog(catalog):
+    with open(CATALOG_FILE, 'w') as f:
+        json.dump(catalog, f, indent=2)
+
+def load_help_requests():
+    with open(HELP_REQUESTS_FILE, 'r') as f:
+        return json.load(f)
+
+def save_help_requests(help_requests):
+    with open(HELP_REQUESTS_FILE, 'w') as f:
+        json.dump(help_requests, f, indent=2)
+
 # Background thread to check for expired requests
 def cleanup_expired_requests():
     while True:
         time.sleep(5)  # Check every 5 seconds
-        requests = load_requests()
         current_time = datetime.now()
 
-        # Filter out expired requests
+        # Clean up shoe try-on requests
+        requests = load_requests()
         active_requests = []
         expired_count = 0
 
@@ -124,10 +148,36 @@ def cleanup_expired_requests():
                             print(f"Error deleting selfie: {e}")
                 expired_count += 1
 
-        # Save and emit if any expired
         if expired_count > 0:
             save_requests(active_requests)
             socketio.emit('requests_updated', {'requests': active_requests})
+
+        # Clean up help requests
+        help_requests = load_help_requests()
+        active_help_requests = []
+        expired_help_count = 0
+
+        for req in help_requests:
+            created_at = datetime.fromisoformat(req['created_at'])
+            timeout_minutes = req.get('timeout_minutes', 30)
+            expiry_time = created_at + timedelta(minutes=timeout_minutes)
+
+            if current_time < expiry_time:
+                active_help_requests.append(req)
+            else:
+                # Delete associated selfie file
+                if req.get('selfie'):
+                    selfie_path = os.path.join(app.config['UPLOAD_FOLDER'], req['selfie'])
+                    if os.path.exists(selfie_path):
+                        try:
+                            os.remove(selfie_path)
+                        except Exception as e:
+                            print(f"Error deleting selfie: {e}")
+                expired_help_count += 1
+
+        if expired_help_count > 0:
+            save_help_requests(active_help_requests)
+            socketio.emit('help_requests_updated', {'requests': active_help_requests})
 
 # Start cleanup thread
 cleanup_thread = threading.Thread(target=cleanup_expired_requests, daemon=True)
@@ -352,13 +402,214 @@ def uploaded_file(filename):
     """Serve uploaded selfie images"""
     return send_file(os.path.join(app.config['UPLOAD_FOLDER'], filename))
 
+# ===== PRODUCT CATALOG & HELP SYSTEM ROUTES =====
+
+@app.route('/catalog')
+def catalog_management():
+    """Product catalog management page"""
+    return render_template('products_catalog.html')
+
+@app.route('/api/catalog', methods=['GET'])
+def get_catalog():
+    """Get all catalog products"""
+    catalog = load_catalog()
+    return jsonify(catalog)
+
+@app.route('/api/catalog', methods=['POST'])
+def add_catalog_product():
+    """Add a new catalog product"""
+    data = request.json
+    catalog = load_catalog()
+
+    product_id = str(int(time.time() * 1000))
+
+    product = {
+        'id': product_id,
+        'barcode': data['barcode'],
+        'brand': data['brand'],
+        'description': data['description'],
+        'price': data['price'],
+        'inventory': data['inventory'],
+        'created_at': datetime.now().isoformat()
+    }
+
+    catalog.append(product)
+    save_catalog(catalog)
+
+    return jsonify(product), 201
+
+@app.route('/api/catalog/<product_id>', methods=['PUT'])
+def update_catalog_product(product_id):
+    """Update a catalog product"""
+    data = request.json
+    catalog = load_catalog()
+
+    for i, product in enumerate(catalog):
+        if product['id'] == product_id:
+            catalog[i].update({
+                'barcode': data['barcode'],
+                'brand': data['brand'],
+                'description': data['description'],
+                'price': data['price'],
+                'inventory': data['inventory']
+            })
+            save_catalog(catalog)
+            return jsonify(catalog[i])
+
+    return jsonify({'error': 'Product not found'}), 404
+
+@app.route('/api/catalog/<product_id>', methods=['DELETE'])
+def delete_catalog_product(product_id):
+    """Delete a catalog product"""
+    catalog = load_catalog()
+    catalog = [p for p in catalog if p['id'] != product_id]
+    save_catalog(catalog)
+    return '', 204
+
+@app.route('/api/catalog/barcode/<barcode>', methods=['GET'])
+def get_product_by_barcode(barcode):
+    """Get product by barcode"""
+    catalog = load_catalog()
+    product = next((p for p in catalog if p['barcode'] == barcode), None)
+
+    if product:
+        return jsonify(product)
+    else:
+        return jsonify({'error': 'Product not found'}), 404
+
+@app.route('/help-qr')
+def help_qr():
+    """Display help/associate request QR code"""
+    return render_template('help_qr.html')
+
+@app.route('/api/help-qr')
+def generate_help_qr():
+    """Generate QR code for help system"""
+    base_url = request.url_root
+    form_url = f"{base_url}help"
+
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_L,
+        box_size=10,
+        border=4,
+    )
+    qr.add_data(form_url)
+    qr.make(fit=True)
+
+    img = qr.make_image(fill_color="black", back_color="white")
+
+    img_io = io.BytesIO()
+    img.save(img_io, 'PNG')
+    img_io.seek(0)
+
+    return send_file(img_io, mimetype='image/png')
+
+@app.route('/help')
+def help_form():
+    """Help request form"""
+    return render_template('help_form.html')
+
+@app.route('/help-dashboard')
+def help_dashboard():
+    """Help requests dashboard"""
+    return render_template('help_dashboard.html')
+
+@app.route('/api/help-requests', methods=['POST'])
+def submit_help_request():
+    """Submit a new help request"""
+    request_type = request.form.get('request_type')  # 'associate' or 'product'
+    name = request.form.get('name')
+    barcode = request.form.get('barcode', '')
+
+    help_requests = load_help_requests()
+    request_id = str(int(time.time() * 1000))
+
+    # Handle selfie upload
+    selfie_filename = None
+    if 'selfie' in request.files:
+        file = request.files['selfie']
+        if file and file.filename != '' and allowed_file(file.filename):
+            ext = file.filename.rsplit('.', 1)[1].lower()
+            original_filename = f"{request_id}_original.{ext}"
+            cropped_filename = f"{request_id}.{ext}"
+
+            original_path = os.path.join(app.config['UPLOAD_FOLDER'], original_filename)
+            cropped_path = os.path.join(app.config['UPLOAD_FOLDER'], cropped_filename)
+
+            file.save(original_path)
+
+            if crop_and_resize_image(original_path, cropped_path):
+                selfie_filename = cropped_filename
+                os.remove(original_path)
+            else:
+                os.rename(original_path, cropped_path)
+                selfie_filename = cropped_filename
+
+    new_request = {
+        'id': request_id,
+        'request_type': request_type,
+        'name': name,
+        'barcode': barcode,
+        'product_info': None,
+        'selfie': selfie_filename,
+        'created_at': datetime.now().isoformat(),
+        'timeout_minutes': 30
+    }
+
+    # If barcode provided, fetch product info
+    if barcode:
+        catalog = load_catalog()
+        product = next((p for p in catalog if p['barcode'] == barcode), None)
+        if product:
+            new_request['product_info'] = {
+                'brand': product['brand'],
+                'description': product['description'],
+                'price': product['price'],
+                'inventory': product['inventory']
+            }
+
+    help_requests.append(new_request)
+    save_help_requests(help_requests)
+
+    socketio.emit('help_requests_updated', {'requests': help_requests})
+
+    return jsonify(new_request), 201
+
+@app.route('/api/help-requests', methods=['GET'])
+def get_help_requests():
+    """Get all help requests"""
+    help_requests = load_help_requests()
+    return jsonify(help_requests)
+
+@app.route('/api/help-requests/<request_id>', methods=['DELETE'])
+def delete_help_request(request_id):
+    """Manually delete a help request"""
+    help_requests = load_help_requests()
+
+    # Find and delete associated selfie file
+    for req in help_requests:
+        if req['id'] == request_id and req.get('selfie'):
+            selfie_path = os.path.join(app.config['UPLOAD_FOLDER'], req['selfie'])
+            if os.path.exists(selfie_path):
+                os.remove(selfie_path)
+
+    help_requests = [r for r in help_requests if r['id'] != request_id]
+    save_help_requests(help_requests)
+
+    socketio.emit('help_requests_updated', {'requests': help_requests})
+
+    return '', 204
+
 # WebSocket events
 @socketio.on('connect')
 def handle_connect():
     print('Client connected')
     # Send current requests to newly connected client
     requests = load_requests()
+    help_requests = load_help_requests()
     emit('requests_updated', {'requests': requests})
+    emit('help_requests_updated', {'requests': help_requests})
 
 @socketio.on('disconnect')
 def handle_disconnect():
