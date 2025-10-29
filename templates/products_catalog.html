@@ -5,6 +5,88 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Product Catalog Management</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <style>
+        .scanner-container {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 9999;
+            padding: 20px;
+        }
+
+        .scanner-container.active {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .scanner-header {
+            color: white;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .scanner-header h2 {
+            margin-bottom: 10px;
+        }
+
+        .scanner-header p {
+            opacity: 0.8;
+        }
+
+        #scanner {
+            max-width: 600px;
+            width: 100%;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .scanner-close {
+            margin-top: 20px;
+            padding: 12px 30px;
+            background: #f44336;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        .scan-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 16px;
+            background: #4caf50;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-left: 10px;
+        }
+
+        .scan-btn:hover {
+            background: #45a049;
+        }
+
+        .barcode-input-group {
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+        }
+
+        .barcode-input-group .form-group {
+            flex: 1;
+            margin-bottom: 0;
+        }
+    </style>
 </head>
 <body>
     <div class="container">
@@ -24,9 +106,14 @@
             <form id="product-form">
                 <input type="hidden" id="product-id">
 
-                <div class="form-group">
-                    <label for="barcode">Barcode/SKU:</label>
-                    <input type="text" id="barcode" required placeholder="e.g., 123456789">
+                <div class="barcode-input-group">
+                    <div class="form-group">
+                        <label for="barcode">Barcode/SKU:</label>
+                        <input type="text" id="barcode" required placeholder="e.g., 123456789">
+                    </div>
+                    <button type="button" class="scan-btn" onclick="startScanner()">
+                        📷 Scan Barcode
+                    </button>
                 </div>
 
                 <div class="form-group">
@@ -172,8 +259,72 @@
             }
         }
 
+        // Barcode Scanner
+        let html5QrCode = null;
+
+        function startScanner() {
+            const scannerContainer = document.getElementById('scanner-container');
+            scannerContainer.classList.add('active');
+
+            html5QrCode = new Html5Qrcode("scanner");
+
+            const config = {
+                fps: 10,
+                qrbox: { width: 250, height: 250 },
+                formatsToSupport: [
+                    Html5QrcodeSupportedFormats.CODE_128,
+                    Html5QrcodeSupportedFormats.CODE_39,
+                    Html5QrcodeSupportedFormats.EAN_13,
+                    Html5QrcodeSupportedFormats.EAN_8,
+                    Html5QrcodeSupportedFormats.UPC_A,
+                    Html5QrcodeSupportedFormats.UPC_E,
+                    Html5QrcodeSupportedFormats.QR_CODE
+                ]
+            };
+
+            html5QrCode.start(
+                { facingMode: "environment" },
+                config,
+                (decodedText, decodedResult) => {
+                    // Successfully scanned
+                    document.getElementById('barcode').value = decodedText;
+                    stopScanner();
+                },
+                (errorMessage) => {
+                    // Scanning errors can be ignored
+                }
+            ).catch(err => {
+                console.error("Error starting scanner:", err);
+                alert("Unable to start camera. Please check permissions.");
+                stopScanner();
+            });
+        }
+
+        function stopScanner() {
+            if (html5QrCode) {
+                html5QrCode.stop().then(() => {
+                    document.getElementById('scanner-container').classList.remove('active');
+                    html5QrCode = null;
+                }).catch(err => {
+                    console.error("Error stopping scanner:", err);
+                });
+            } else {
+                document.getElementById('scanner-container').classList.remove('active');
+            }
+        }
+
         // Load products on page load
         loadProducts();
     </script>
+
+    <!-- Barcode Scanner Overlay -->
+    <div id="scanner-container" class="scanner-container">
+        <div class="scanner-header">
+            <h2>Scan Product Barcode</h2>
+            <p>Position the barcode within the frame</p>
+        </div>
+        <div id="scanner"></div>
+        <button class="scanner-close" onclick="stopScanner()">Cancel</button>
+    </div>
 </body>
 </html>
