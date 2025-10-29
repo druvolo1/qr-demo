@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Requests Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <style>
+        .dashboard-container {
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .dashboard-header {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: #4caf50;
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.disconnected {
+            background-color: #f44336;
+            animation: none;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        .requests-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .request-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .request-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        .request-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .request-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 15px;
+        }
+
+        .request-product {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .request-time {
+            font-size: 12px;
+            color: #999;
+        }
+
+        .delete-btn {
+            background: #f44336;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 5px 10px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: background 0.2s;
+        }
+
+        .delete-btn:hover {
+            background: #d32f2f;
+        }
+
+        .request-details {
+            margin-top: 15px;
+        }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .detail-label {
+            color: #666;
+            font-weight: 500;
+        }
+
+        .detail-value {
+            color: #333;
+            font-weight: 600;
+        }
+
+        .time-remaining {
+            margin-top: 15px;
+            padding: 10px;
+            background: #f5f5f5;
+            border-radius: 5px;
+            text-align: center;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .time-remaining.warning {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .time-remaining.critical {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .selfie-container {
+            margin-top: 15px;
+            text-align: center;
+        }
+
+        .selfie-img {
+            width: 120px;
+            height: 120px;
+            border-radius: 10px;
+            object-fit: cover;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+            border: 3px solid #f0f0f0;
+        }
+
+        .customer-name {
+            font-size: 16px;
+            font-weight: 600;
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .no-requests {
+            text-align: center;
+            padding: 60px 20px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .no-requests h3 {
+            color: #999;
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .no-requests p {
+            color: #bbb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container dashboard-container">
+        <header class="dashboard-header">
+            <div>
+                <h1>Requests Dashboard</h1>
+                <div class="status-indicator">
+                    <div class="status-dot" id="status-dot"></div>
+                    <span id="status-text">Connected</span>
+                </div>
+            </div>
+            <nav>
+                <a href="/" class="btn">Portal</a>
+                <a href="/dashboard" class="btn btn-secondary">Dashboard</a>
+            </nav>
+        </header>
+
+        <div id="requests-container">
+            <div class="no-requests">
+                <h3>No Active Requests</h3>
+                <p>Waiting for new requests...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        let requests = [];
+        let timeUpdateInterval;
+
+        // Socket connection handlers
+        socket.on('connect', () => {
+            console.log('Connected to server');
+            document.getElementById('status-dot').classList.remove('disconnected');
+            document.getElementById('status-text').textContent = 'Connected';
+        });
+
+        socket.on('disconnect', () => {
+            console.log('Disconnected from server');
+            document.getElementById('status-dot').classList.add('disconnected');
+            document.getElementById('status-text').textContent = 'Disconnected';
+        });
+
+        // Listen for request updates
+        socket.on('requests_updated', (data) => {
+            requests = data.requests;
+            displayRequests();
+        });
+
+        // Display requests
+        function displayRequests() {
+            const container = document.getElementById('requests-container');
+
+            if (requests.length === 0) {
+                container.innerHTML = `
+                    <div class="no-requests">
+                        <h3>No Active Requests</h3>
+                        <p>Waiting for new requests...</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = `
+                <div class="requests-grid">
+                    ${requests.map(request => createRequestCard(request)).join('')}
+                </div>
+            `;
+        }
+
+        // Create request card HTML
+        function createRequestCard(request) {
+            const createdAt = new Date(request.created_at);
+            const timeAgo = getTimeAgo(createdAt);
+            const timeRemaining = getTimeRemaining(createdAt, request.timeout_minutes);
+
+            const selfieHtml = request.selfie
+                ? `<div class="selfie-container">
+                        <img src="/uploads/${request.selfie}" alt="${request.name}" class="selfie-img">
+                   </div>`
+                : '';
+
+            return `
+                <div class="request-card">
+                    <div class="request-header">
+                        <div>
+                            <div class="request-product">${request.product_name}</div>
+                            <div class="request-time">${timeAgo}</div>
+                        </div>
+                        <button class="delete-btn" onclick="deleteRequest('${request.id}')">Remove</button>
+                    </div>
+                    ${request.name ? `<div class="customer-name">${request.name}</div>` : ''}
+                    <div class="request-details">
+                        <div class="detail-row">
+                            <span class="detail-label">Size:</span>
+                            <span class="detail-value">${request.size}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Request ID:</span>
+                            <span class="detail-value">#${request.id.slice(-6)}</span>
+                        </div>
+                    </div>
+                    ${selfieHtml}
+                    <div class="time-remaining ${timeRemaining.class}" id="time-${request.id}">
+                        ${timeRemaining.text}
+                    </div>
+                </div>
+            `;
+        }
+
+        // Get time ago string
+        function getTimeAgo(date) {
+            const seconds = Math.floor((new Date() - date) / 1000);
+
+            if (seconds < 60) return `${seconds} seconds ago`;
+            const minutes = Math.floor(seconds / 60);
+            if (minutes < 60) return `${minutes} minute${minutes !== 1 ? 's' : ''} ago`;
+            const hours = Math.floor(minutes / 60);
+            if (hours < 24) return `${hours} hour${hours !== 1 ? 's' : ''} ago`;
+            const days = Math.floor(hours / 24);
+            return `${days} day${days !== 1 ? 's' : ''} ago`;
+        }
+
+        // Get time remaining
+        function getTimeRemaining(createdAt, timeoutMinutes) {
+            const expiryTime = new Date(createdAt.getTime() + timeoutMinutes * 60000);
+            const now = new Date();
+            const remainingMs = expiryTime - now;
+            const remainingMinutes = Math.floor(remainingMs / 60000);
+            const remainingSeconds = Math.floor((remainingMs % 60000) / 1000);
+
+            let className = '';
+            if (remainingMinutes < 2) {
+                className = 'critical';
+            } else if (remainingMinutes < 5) {
+                className = 'warning';
+            }
+
+            let text;
+            if (remainingMinutes > 0) {
+                text = `Expires in ${remainingMinutes}m ${remainingSeconds}s`;
+            } else if (remainingSeconds > 0) {
+                text = `Expires in ${remainingSeconds}s`;
+            } else {
+                text = 'Expired';
+            }
+
+            return { text, class: className };
+        }
+
+        // Update time remaining for all requests
+        function updateTimeRemaining() {
+            requests.forEach(request => {
+                const element = document.getElementById(`time-${request.id}`);
+                if (element) {
+                    const createdAt = new Date(request.created_at);
+                    const timeRemaining = getTimeRemaining(createdAt, request.timeout_minutes);
+                    element.textContent = timeRemaining.text;
+                    element.className = `time-remaining ${timeRemaining.class}`;
+                }
+            });
+        }
+
+        // Delete request
+        async function deleteRequest(requestId) {
+            if (confirm('Are you sure you want to remove this request?')) {
+                await fetch(`/api/requests/${requestId}`, { method: 'DELETE' });
+            }
+        }
+
+        // Load initial requests
+        async function loadRequests() {
+            const response = await fetch('/api/requests');
+            requests = await response.json();
+            displayRequests();
+        }
+
+        // Update time remaining every second
+        timeUpdateInterval = setInterval(updateTimeRemaining, 1000);
+
+        // Load requests on page load
+        loadRequests();
+    </script>
+</body>
+</html>

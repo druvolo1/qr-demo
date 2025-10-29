@@ -1,0 +1,13 @@
+Collecting opencv-python
+  Downloading opencv_python-4.12.0.88-cp37-abi3-win_amd64.whl.metadata (19 kB)
+Collecting numpy<2.3.0,>=2 (from opencv-python)
+  Downloading numpy-2.2.6.tar.gz (20.3 MB)
+     ---------------------------------------- 20.3/20.3 MB 72.4 MB/s  0:00:00
+  Installing build dependencies: started
+  Installing build dependencies: finished with status 'done'
+  Getting requirements to build wheel: started
+  Getting requirements to build wheel: finished with status 'done'
+  Installing backend dependencies: started
+  Installing backend dependencies: finished with status 'done'
+  Preparing metadata (pyproject.toml): started
+  Preparing metadata (pyproject.toml): finished with status 'error'

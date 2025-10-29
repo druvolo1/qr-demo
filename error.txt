@@ -1,0 +1,2 @@
+(venv) C:\Users\Dave\Documents\Programming\qr demo>pip install numpy<2.0.0 opencv-python-headless
+The system cannot find the file specified.

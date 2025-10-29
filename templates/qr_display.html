@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% if product.show_product_info %}{{ product.name }} - {% endif %}QR Code</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        .qr-container {
+            text-align: center;
+            position: relative;
+            {% if product.qr_size_type == 'percentage' %}
+            width: {{ product.qr_size_value }}vmin;
+            height: {{ product.qr_size_value }}vmin;
+            {% else %}
+            width: {{ product.qr_size_value }}px;
+            height: {{ product.qr_size_value }}px;
+            {% endif %}
+            transform: translate({{ product.qr_offset_x }}px, {{ product.qr_offset_y }}px);
+        }
+
+        {% if product.show_product_info %}
+        .product-info {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .product-info h1 {
+            color: #333;
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .product-info p {
+            color: #666;
+            font-size: 14px;
+        }
+        {% endif %}
+
+        .qr-wrapper {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            display: inline-block;
+        }
+
+        .qr-code {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: block;
+        }
+
+        .scan-instruction {
+            color: white;
+            font-size: 18px;
+            margin-top: 20px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+    </style>
+</head>
+<body>
+    <div class="qr-container">
+        {% if product.show_product_info %}
+        <div class="product-info">
+            <h1>{{ product.name }}</h1>
+            <p>Scan to access</p>
+        </div>
+        {% endif %}
+
+        <div class="qr-wrapper">
+            <img src="/api/qr/{{ product.id }}" alt="QR Code" class="qr-code">
+        </div>
+
+        <p class="scan-instruction">Scan with your camera</p>
+    </div>
+</body>
+</html>

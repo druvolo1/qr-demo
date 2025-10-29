@@ -1,0 +1,14 @@
+[
+  {
+    "id": "1761767022637",
+    "name": "Air Jordan Max",
+    "message": "Want to try this on? Let us know how big you want your kicks and we will bring them out.",
+    "qr_size_type": "percentage",
+    "qr_size_value": 50,
+    "qr_offset_x": 0,
+    "qr_offset_y": 0,
+    "timeout_minutes": 30,
+    "show_product_info": true,
+    "created_at": "2025-10-29T15:43:42.637826"
+  }
+]

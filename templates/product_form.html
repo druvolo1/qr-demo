@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ product.name }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .form-container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+        }
+
+        .form-container h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .form-container .message {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 16px;
+            line-height: 1.5;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        .form-group input[type="text"],
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            background: white;
+            cursor: pointer;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input[type="text"] {
+            cursor: text;
+        }
+
+        .form-group select:focus,
+        .form-group input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .file-upload {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+            width: 100%;
+        }
+
+        .file-upload input[type="file"] {
+            position: absolute;
+            left: -9999px;
+        }
+
+        .file-upload-label {
+            display: block;
+            padding: 12px;
+            border: 2px dashed #e0e0e0;
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #f9f9f9;
+        }
+
+        .file-upload-label:hover {
+            border-color: #667eea;
+            background: #f0f0ff;
+        }
+
+        .file-upload-label.has-file {
+            border-color: #4caf50;
+            background: #f0fff0;
+        }
+
+        .file-preview {
+            margin-top: 10px;
+            text-align: center;
+        }
+
+        .file-preview img {
+            max-width: 200px;
+            max-height: 200px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .submit-btn:active {
+            transform: translateY(0);
+        }
+
+        .success-message {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .success-message.show {
+            display: block;
+        }
+
+        .success-icon {
+            font-size: 64px;
+            color: #4caf50;
+            margin-bottom: 20px;
+        }
+
+        .success-message h2 {
+            color: #4caf50;
+            margin-bottom: 10px;
+        }
+
+        .success-message p {
+            color: #666;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="form-container">
+        <div id="form-content">
+            <h1>{{ product.name }}</h1>
+            <p class="message">{{ product.message }}</p>
+
+            <form id="request-form" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label for="name">Your Name:</label>
+                    <input type="text" id="name" placeholder="Enter your name" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="size">Select Size:</label>
+                    <select id="size" required>
+                        <option value="">-- Choose a size --</option>
+                        <optgroup label="Men's Sizes">
+                            <option value="Men's 6">Men's 6</option>
+                            <option value="Men's 6.5">Men's 6.5</option>
+                            <option value="Men's 7">Men's 7</option>
+                            <option value="Men's 7.5">Men's 7.5</option>
+                            <option value="Men's 8">Men's 8</option>
+                            <option value="Men's 8.5">Men's 8.5</option>
+                            <option value="Men's 9">Men's 9</option>
+                            <option value="Men's 9.5">Men's 9.5</option>
+                            <option value="Men's 10">Men's 10</option>
+                            <option value="Men's 10.5">Men's 10.5</option>
+                            <option value="Men's 11">Men's 11</option>
+                            <option value="Men's 11.5">Men's 11.5</option>
+                            <option value="Men's 12">Men's 12</option>
+                            <option value="Men's 12.5">Men's 12.5</option>
+                            <option value="Men's 13">Men's 13</option>
+                            <option value="Men's 14">Men's 14</option>
+                            <option value="Men's 15">Men's 15</option>
+                        </optgroup>
+                        <optgroup label="Women's Sizes">
+                            <option value="Women's 5">Women's 5</option>
+                            <option value="Women's 5.5">Women's 5.5</option>
+                            <option value="Women's 6">Women's 6</option>
+                            <option value="Women's 6.5">Women's 6.5</option>
+                            <option value="Women's 7">Women's 7</option>
+                            <option value="Women's 7.5">Women's 7.5</option>
+                            <option value="Women's 8">Women's 8</option>
+                            <option value="Women's 8.5">Women's 8.5</option>
+                            <option value="Women's 9">Women's 9</option>
+                            <option value="Women's 9.5">Women's 9.5</option>
+                            <option value="Women's 10">Women's 10</option>
+                            <option value="Women's 10.5">Women's 10.5</option>
+                            <option value="Women's 11">Women's 11</option>
+                            <option value="Women's 11.5">Women's 11.5</option>
+                            <option value="Women's 12">Women's 12</option>
+                        </optgroup>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="selfie">Upload Selfie (Optional):</label>
+                    <div class="file-upload">
+                        <input type="file" id="selfie" accept="image/*" capture="user" onchange="previewImage(event)">
+                        <label for="selfie" class="file-upload-label" id="file-label">
+                            📸 Tap to take/upload selfie
+                        </label>
+                    </div>
+                    <div class="file-preview" id="file-preview"></div>
+                </div>
+
+                <button type="submit" class="submit-btn">Submit Request</button>
+            </form>
+        </div>
+
+        <div id="success-message" class="success-message">
+            <div class="success-icon">✓</div>
+            <h2>Request Submitted!</h2>
+            <p>Your request has been received and will appear on the dashboard.</p>
+        </div>
+    </div>
+
+    <script>
+        function previewImage(event) {
+            const file = event.target.files[0];
+            const preview = document.getElementById('file-preview');
+            const label = document.getElementById('file-label');
+
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    preview.innerHTML = `<img src="${e.target.result}" alt="Preview">`;
+                    label.textContent = `✓ ${file.name}`;
+                    label.classList.add('has-file');
+                }
+                reader.readAsDataURL(file);
+            } else {
+                preview.innerHTML = '';
+                label.textContent = '📸 Tap to take/upload selfie';
+                label.classList.remove('has-file');
+            }
+        }
+
+        document.getElementById('request-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const formData = new FormData();
+            formData.append('product_id', '{{ product.id }}');
+            formData.append('name', document.getElementById('name').value);
+            formData.append('size', document.getElementById('size').value);
+
+            const selfieInput = document.getElementById('selfie');
+            if (selfieInput.files.length > 0) {
+                formData.append('selfie', selfieInput.files[0]);
+            }
+
+            const response = await fetch('/api/requests', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (response.ok) {
+                // Show success message
+                document.getElementById('form-content').style.display = 'none';
+                document.getElementById('success-message').classList.add('show');
+            }
+        });
+    </script>
+</body>
+</html>
